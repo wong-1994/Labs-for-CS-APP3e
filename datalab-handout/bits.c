@@ -246,7 +246,12 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  int divide1 = ((x >> 16) | x);
+  int divide2 = ((divide1 >> 8) | divide1);
+  int divide3 = ((divide2 >> 4) | divide2);
+  int divide4 = ((divide3 >> 2) | divide3);
+  int divide5 = ((divide4 >> 1) | divide4);
+  return ((divide5 & 1) ^ 1);
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -261,7 +266,41 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  /* 
+   * Note:
+   * We can push 0s to x's most significant position without change x's value 
+   * if x is positive,
+   * and 1s if x is negetive. 
+   */
+  int maskTail = (~1) + 1;
+  int neg1 = maskTail;
+
+  /* Binary Search + conditional*/
+  int ifXNeg = (x >> 31); 
+  int maskNeg = (!ifXNeg) + maskTail;
+  int x32 = (maskNeg & (~x)) | (~maskNeg & x);
+
+  int ifHighest16 = !!(x32 >> 16); 
+  int maskH16 = (ifHighest16) + maskTail;
+  int x16 = (maskH16 & (x32 & ((1 << 16) + neg1))) | (~maskH16 & (x32 >> 16));
+
+  int ifHighest8 = !!(x16 >> 8); 
+  int maskH8 = (ifHighest8) + maskTail;
+  int x8 = (maskH8 & (x16 & (0xFF))) | (~maskH8 & (x16 >> 8));
+
+  int ifHighest4 = !!(x8 >> 4); 
+  int maskH4 = (ifHighest4) + maskTail;
+  int x4 = (maskH4 & (x8 & (0xF))) | (~maskH4 & (x8 >> 4));
+
+  int ifHighest2 = !!(x4 >> 2);
+  int maskH2 = (ifHighest2) + maskTail;
+  int x2 = (maskH2 & (x4 & 3)) | (~maskH2 & (x4 >> 2));
+
+  int ifHighest1 = !!(x2 >> 1);
+  int maskH1 = (ifHighest1) + maskTail;
+  int x1 = (maskH1 & (x2 & 1)) | (~maskH1 & (x2 >> 1));
+
+  return (1 + x1 + ifHighest1 + (ifHighest2 << 1) + (ifHighest4 << 2) + (ifHighest8 << 3) + (ifHighest16 << 4));
 }
 //float
 /* 
