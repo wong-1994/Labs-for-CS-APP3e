@@ -315,7 +315,21 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  unsigned expBit = (0x7f800000 & uf);
+  unsigned signBit = (0x80000000 & uf);
+  unsigned fBit = (0x007fffff & uf);
+  if (expBit == 0) {
+    return (signBit + (fBit << 1));
+  }
+  else if (expBit == 0x7f800000) {
+    return uf;
+  }
+  else if (expBit == 0x7f000000) {
+    return (signBit + 0x7f800000);
+  }
+  else {
+    return (signBit + (((expBit >> 23) + 1) << 23) + fBit);
+  } 
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -330,7 +344,37 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int expBit = (0x7f800000 & uf);
+  int e = (expBit >> 23) - 127; 
+  unsigned signBit = (0x80000000 & uf);
+  unsigned fBit = (0x007fffff & uf);
+  unsigned intBits = ((1 << 23) + fBit);
+
+  if (expBit == 0) {
+    return 0;
+  }
+
+  if (expBit == 0x7f800000) {
+    return 0x80000000;
+  }
+
+  if (e < 127) {
+    return 0;
+  }
+
+  if (e > 30) {
+    return 0x80000000;
+  }
+  
+  if (e >= 23) {
+    return (signBit + (intBits << (e - 23)));
+  }
+
+  return (signBit + (intBits >> (23 - e)));
+}
+
+int main() {
+  floatFloat2Int(0x3f800000);
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
