@@ -346,9 +346,9 @@ unsigned floatScale2(unsigned uf) {
 int floatFloat2Int(unsigned uf) {
   int expBit = (0x7f800000 & uf);
   int e = (expBit >> 23) - 127; 
-  unsigned signBit = (0x80000000 & uf);
-  unsigned fBit = (0x007fffff & uf);
-  unsigned intBits = ((1 << 23) + fBit);
+  int signBit = (0x80000000 & uf);
+  int fBit = (0x007fffff & uf);
+  int intBits = ((1 << 23) + fBit);
 
   if (expBit == 0) {
     return 0;
@@ -358,7 +358,7 @@ int floatFloat2Int(unsigned uf) {
     return 0x80000000;
   }
 
-  if (e < 127) {
+  if (e < 0) {
     return 0;
   }
 
@@ -367,14 +367,24 @@ int floatFloat2Int(unsigned uf) {
   }
   
   if (e >= 23) {
-    return (signBit + (intBits << (e - 23)));
+    if (signBit == 0) {
+      return (intBits << (e - 23));
+    }
+    else {
+      return (~(intBits << (e - 23))) + 1;
+    }
   }
 
-  return (signBit + (intBits >> (23 - e)));
-}
+  if (e < 23) {
+    if (signBit == 0) {
+      return (intBits >> (23 - e));
+    }
+    else {
+      return (~(intBits >> (23 - e))) + 1;
+    }
+  }
 
-int main() {
-  floatFloat2Int(0x3f800000);
+  return 0x8000000;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -390,5 +400,19 @@ int main() {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int lowNorm = 0x00800000;
+
+  if (x < -150) {
+    return 0;
+  }
+  
+  if (x < -126) {
+    return (lowNorm >> (-x - 126));
+  }
+
+  if (x > 127) {
+    return 0x7f800000;
+  }
+
+  return ((127 + x) << 23);
 }
