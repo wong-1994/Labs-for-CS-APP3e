@@ -400,9 +400,6 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-<<<<<<< HEAD
-    return 2;
-=======
   int lowNorm = 0x00800000;
 
   if (x < -150) {
@@ -418,5 +415,4 @@ unsigned floatPower2(int x) {
   }
 
   return ((127 + x) << 23);
->>>>>>> dev
 }
