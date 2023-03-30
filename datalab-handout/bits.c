@@ -203,7 +203,11 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int upper4Byte = (x >> 4);
+  int cond1 = !(upper4Byte ^ 0x3);
+  int cond2 = !((x >> 3) & 1);
+  int cond3 = (!((x >> 2) & 1)) & (!((x >> 1) & 1));
+  return cond1 & (cond2 | cond3);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -213,7 +217,8 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int mask = (!x) + (~1) + 1;
+  return (mask & y) | (~mask & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -223,7 +228,13 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int positiveX = !((1 << 31) & x);
+  int positiveY = !((1 << 31) & y);
+  int sameSign = !(positiveX ^ positiveY);
+  int mask = (!sameSign) + (~1) + 1;
+  int comp = y + ~x + 1;
+  int res = !(comp >> 31);
+  return (mask & res) | (~mask & positiveY);
 }
 //4
 /* 
@@ -235,7 +246,12 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  int divide1 = ((x >> 16) | x);
+  int divide2 = ((divide1 >> 8) | divide1);
+  int divide3 = ((divide2 >> 4) | divide2);
+  int divide4 = ((divide3 >> 2) | divide3);
+  int divide5 = ((divide4 >> 1) | divide4);
+  return ((divide5 & 1) ^ 1);
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -250,7 +266,41 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  /* 
+   * Note:
+   * We can push 0s to x's most significant position without change x's value 
+   * if x is positive,
+   * and 1s if x is negetive. 
+   */
+  int maskTail = (~1) + 1;
+  int neg1 = maskTail;
+
+  /* Binary Search + conditional*/
+  int ifXNeg = (x >> 31); 
+  int maskNeg = (!ifXNeg) + maskTail;
+  int x32 = (maskNeg & (~x)) | (~maskNeg & x);
+
+  int ifHighest16 = !!(x32 >> 16); 
+  int maskH16 = (ifHighest16) + maskTail;
+  int x16 = (maskH16 & (x32 & ((1 << 16) + neg1))) | (~maskH16 & (x32 >> 16));
+
+  int ifHighest8 = !!(x16 >> 8); 
+  int maskH8 = (ifHighest8) + maskTail;
+  int x8 = (maskH8 & (x16 & (0xFF))) | (~maskH8 & (x16 >> 8));
+
+  int ifHighest4 = !!(x8 >> 4); 
+  int maskH4 = (ifHighest4) + maskTail;
+  int x4 = (maskH4 & (x8 & (0xF))) | (~maskH4 & (x8 >> 4));
+
+  int ifHighest2 = !!(x4 >> 2);
+  int maskH2 = (ifHighest2) + maskTail;
+  int x2 = (maskH2 & (x4 & 3)) | (~maskH2 & (x4 >> 2));
+
+  int ifHighest1 = !!(x2 >> 1);
+  int maskH1 = (ifHighest1) + maskTail;
+  int x1 = (maskH1 & (x2 & 1)) | (~maskH1 & (x2 >> 1));
+
+  return (1 + x1 + ifHighest1 + (ifHighest2 << 1) + (ifHighest4 << 2) + (ifHighest8 << 3) + (ifHighest16 << 4));
 }
 //float
 /* 
@@ -265,7 +315,21 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  unsigned expBit = (0x7f800000 & uf);
+  unsigned signBit = (0x80000000 & uf);
+  unsigned fBit = (0x007fffff & uf);
+  if (expBit == 0) {
+    return (signBit + (fBit << 1));
+  }
+  else if (expBit == 0x7f800000) {
+    return uf;
+  }
+  else if (expBit == 0x7f000000) {
+    return (signBit + 0x7f800000);
+  }
+  else {
+    return (signBit + (((expBit >> 23) + 1) << 23) + fBit);
+  } 
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -280,7 +344,47 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int expBit = (0x7f800000 & uf);
+  int e = (expBit >> 23) - 127; 
+  int signBit = (0x80000000 & uf);
+  int fBit = (0x007fffff & uf);
+  int intBits = ((1 << 23) + fBit);
+
+  if (expBit == 0) {
+    return 0;
+  }
+
+  if (expBit == 0x7f800000) {
+    return 0x80000000;
+  }
+
+  if (e < 0) {
+    return 0;
+  }
+
+  if (e > 30) {
+    return 0x80000000;
+  }
+  
+  if (e >= 23) {
+    if (signBit == 0) {
+      return (intBits << (e - 23));
+    }
+    else {
+      return (~(intBits << (e - 23))) + 1;
+    }
+  }
+
+  if (e < 23) {
+    if (signBit == 0) {
+      return (intBits >> (23 - e));
+    }
+    else {
+      return (~(intBits >> (23 - e))) + 1;
+    }
+  }
+
+  return 0x8000000;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -296,5 +400,23 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
+<<<<<<< HEAD
     return 2;
+=======
+  int lowNorm = 0x00800000;
+
+  if (x < -150) {
+    return 0;
+  }
+  
+  if (x < -126) {
+    return (lowNorm >> (-x - 126));
+  }
+
+  if (x > 127) {
+    return 0x7f800000;
+  }
+
+  return ((127 + x) << 23);
+>>>>>>> dev
 }

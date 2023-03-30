@@ -52,8 +52,12 @@ Mkfile.old
 dkms.conf
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # VS Cose Config
 =======
 # VS Code config files
 >>>>>>> data-lab to rating2
+=======
+# VS Code config files
+>>>>>>> dev
 .vscode/
